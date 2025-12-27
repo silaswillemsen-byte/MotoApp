@@ -823,9 +823,9 @@ const App: React.FC = () => {
   const hasDestination = useMemo(() => stops[1].coord !== null || stops.slice(2).some(s => s.coord !== null), [stops]);
 
   return (
-    <div className="flex h-screen w-full relative bg-slate-50 font-sans overflow-hidden">
+    <div className="flex h-screen w-full relative bg-slate-950 font-sans overflow-hidden">
       <div className="map-wrapper" style={mapTransformStyles}>
-        <div ref={mapContainerRef} className="h-full w-full bg-slate-50" />
+        <div ref={mapContainerRef} className="h-full w-full bg-slate-950" />
       </div>
 
       {/* GPS Permission Prompt */}
@@ -840,8 +840,8 @@ const App: React.FC = () => {
                 </svg>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-slate-800 text-sm mb-1">GPS Permission Required</h3>
-                <p className="text-xs text-slate-600 mb-3">Enable location access to use navigation features</p>
+                <h3 className="font-bold text-slate-100 text-sm mb-1">GPS Permission Required</h3>
+                <p className="text-xs text-slate-300 mb-3">Enable location access to use navigation features</p>
                 <button
                   onClick={requestGPSPermission}
                   className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg text-sm transition-all active:scale-95"
@@ -858,11 +858,11 @@ const App: React.FC = () => {
       <div className="absolute right-3 top-1/2 -translate-y-1/2 z-[300] flex flex-col gap-1.5">
         <button 
           onClick={() => mapRef.current?.zoomIn()} 
-          className={`w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-700 hover:text-blue-500 font-bold text-lg shadow-lg transition-all active:scale-90 ${!isUIVisible ? 'opacity-0 pointer-events-none' : ''}`}
+          className={`w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-200 hover:text-blue-400 font-bold text-lg shadow-lg transition-all active:scale-90 ${!isUIVisible ? 'opacity-0 pointer-events-none' : ''}`}
         >+</button>
         <button 
           onClick={() => setIsUIVisible(!isUIVisible)}
-          className="w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-700 hover:text-blue-500 shadow-lg transition-all active:scale-90"
+          className="w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-200 hover:text-blue-400 shadow-lg transition-all active:scale-90"
           aria-label={isUIVisible ? "Hide UI" : "Show UI"}
         >
           {isUIVisible ? (
@@ -878,7 +878,7 @@ const App: React.FC = () => {
         </button>
         <button 
           onClick={() => mapRef.current?.zoomOut()} 
-          className={`w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-700 hover:text-blue-500 font-bold text-lg shadow-lg transition-all active:scale-90 ${!isUIVisible ? 'opacity-0 pointer-events-none' : ''}`}
+          className={`w-9 h-9 glass-panel rounded-xl flex items-center justify-center text-slate-200 hover:text-blue-400 font-bold text-lg shadow-lg transition-all active:scale-90 ${!isUIVisible ? 'opacity-0 pointer-events-none' : ''}`}
         >−</button>
       </div>
 
@@ -888,7 +888,7 @@ const App: React.FC = () => {
       <div className="absolute top-3 right-3 z-[100] flex flex-col items-end gap-1.5 pointer-events-none">
         <div className="glass-panel px-2 py-1 rounded-full flex items-center gap-1.5 pointer-events-auto shadow-md">
           <div className={(gpsActive || isSimulating) ? "signal-dot" : "w-1.5 h-1.5 bg-slate-300 rounded-full"} />
-          <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">
+          <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
             {isSimulating ? "Simulation Mode" : (gpsActive ? "GPS Active" : "Searching Satellites...")}
           </span>
         </div>
@@ -906,7 +906,7 @@ const App: React.FC = () => {
               {MANEUVER_ICONS[route.maneuvers[currentManeuverIndex]?.type as keyof typeof MANEUVER_ICONS] || MANEUVER_ICONS['straight']}
             </div>
             <div className="overflow-hidden">
-              <h2 className="text-sm font-bold text-slate-800 tracking-tight truncate">{route.maneuvers[currentManeuverIndex]?.instruction || "Continue ahead"}</h2>
+              <h2 className="text-sm font-bold text-slate-100 tracking-tight truncate">{route.maneuvers[currentManeuverIndex]?.instruction || "Continue ahead"}</h2>
               <p className="text-blue-500 font-medium text-[10px] uppercase tracking-wider">
                 {currentManeuverIndex < route.maneuvers.length - 1 
                   ? `In ${Math.round(route.maneuvers[currentManeuverIndex]?.distance || 0)}m`
@@ -918,15 +918,15 @@ const App: React.FC = () => {
           appStatus !== AppStatus.NAVIGATING && (
             <div className="flex flex-col gap-2">
               <div className="glass-panel p-3 rounded-2xl flex flex-col gap-2 shadow-xl relative">
-                <h3 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] mb-0.5">Planned Route</h3>
+                <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] mb-0.5">Planned Route</h3>
                 {stops.map((stop, index) => (
                   <div key={stop.id} className="relative">
                     <div className="flex items-center gap-2">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${stop.coord ? 'bg-blue-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${stop.coord ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-500'}`}>
                         {index === 0 ? "A" : index === stops.length - 1 ? "B" : index}
                       </div>
                       <input
-                        className="flex-grow bg-slate-50/50 rounded-lg px-3 py-2 border border-slate-100 text-base outline-none text-slate-700 font-bold focus:bg-white focus:border-blue-200 transition-all placeholder:text-slate-300"
+                        className="flex-grow bg-slate-800/50 rounded-lg px-3 py-2 border border-slate-700 text-base outline-none text-slate-100 font-bold focus:bg-slate-800 focus:border-blue-500 transition-all placeholder:text-slate-500"
                         placeholder={index === 0 ? "Optional Start Location" : index === stops.length - 1 ? "Enter Destination..." : `Waypoint ${index}`}
                         value={stop.address}
                         onChange={e => onInputChange(index, e.target.value)}
@@ -992,11 +992,11 @@ const App: React.FC = () => {
                                 <svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24">
                                   <path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/>
                                 </svg>
-                                <div className="font-bold text-slate-800 text-xs group-hover:text-blue-600">
+                                <div className="font-bold text-slate-100 text-xs group-hover:text-blue-400">
                                   My Location
                                 </div>
                               </div>
-                              <div className="text-[10px] text-slate-400 mt-0.5 ml-6">
+                              <div className="text-[10px] text-slate-500 mt-0.5 ml-6">
                                 Use current GPS position
                               </div>
                             </button>
@@ -1017,11 +1017,11 @@ const App: React.FC = () => {
                               onTouchStart={(e) => { e.preventDefault(); selectSuggestion(index, sug); }}
                               className="w-full text-left px-3 py-2.5 hover:bg-blue-50 active:bg-blue-100 border-b border-slate-50 last:border-0 transition-colors group"
                             >
-                              <div className="font-bold text-slate-800 text-xs truncate group-hover:text-blue-600">
+                              <div className="font-bold text-slate-100 text-xs truncate group-hover:text-blue-400">
                                 {streetName}
                               </div>
                               {(city || country) && (
-                                <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                                <div className="text-[10px] text-slate-500 mt-0.5 truncate">
                                   {city && <span>{city}</span>}
                                   {city && country && <span className="mx-1">•</span>}
                                   {country && <span className="font-semibold">{country}</span>}
@@ -1040,7 +1040,7 @@ const App: React.FC = () => {
                 {!stops.some(s => s.coord !== null) && (
                   <button
                     onClick={handleGPXUpload}
-                    className="w-full py-1.5 text-[9px] font-black text-slate-400 hover:text-purple-500 uppercase tracking-widest transition-all hover:bg-purple-50/50 rounded-lg active:scale-95 flex items-center justify-center gap-1.5"
+                    className="w-full py-1.5 text-[9px] font-black text-slate-500 hover:text-purple-400 uppercase tracking-widest transition-all hover:bg-purple-900/30 rounded-lg active:scale-95 flex items-center justify-center gap-1.5"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -1052,7 +1052,7 @@ const App: React.FC = () => {
                 {stops.some(s => s.coord !== null) && (
                   <button
                     onClick={addWaypoint}
-                    className="w-full py-1.5 text-[9px] font-black text-slate-400 hover:text-blue-500 uppercase tracking-widest transition-all hover:bg-blue-50/50 rounded-lg active:scale-95 flex items-center justify-center gap-1.5"
+                    className="w-full py-1.5 text-[9px] font-black text-slate-500 hover:text-blue-400 uppercase tracking-widest transition-all hover:bg-blue-900/30 rounded-lg active:scale-95 flex items-center justify-center gap-1.5"
                   >
                     <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
@@ -1064,7 +1064,7 @@ const App: React.FC = () => {
               {hasDestination && (appStatus === AppStatus.IDLE || appStatus === AppStatus.CONFIRM) && (
                 <div className="glass-panel p-1.5 rounded-xl flex gap-1.5 overflow-x-auto no-scrollbar shadow-lg">
                   {(Object.entries(MODE_LABELS) as [RoutingMode, typeof MODE_LABELS['fast']][]).map(([mode, meta]) => (
-                    <button key={mode} onClick={() => { setSelectedMode(mode); handlePlanRide(mode); }} className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all min-w-[75px] active:scale-95 ${selectedMode === mode ? 'bg-blue-500 text-white shadow-md' : 'bg-white/50 text-slate-500 hover:bg-white'}`}>
+                    <button key={mode} onClick={() => { setSelectedMode(mode); handlePlanRide(mode); }} className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg text-[9px] font-black uppercase transition-all min-w-[75px] active:scale-95 ${selectedMode === mode ? 'bg-blue-500 text-white shadow-md' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'}`}>
                       <span className="text-base mb-0.5">{meta.icon}</span>
                       <span>{meta.label}</span>
                     </button>
@@ -1079,21 +1079,21 @@ const App: React.FC = () => {
       <div className="absolute bottom-4 w-full px-3 md:px-0 md:max-w-lg left-1/2 -translate-x-1/2 z-[200]">
         {!isFollowing && currentPos && (
           <div className="flex justify-center mb-3">
-            <button onClick={() => { setIsFollowing(true); setZoomLevel(17.5); }} className="glass-panel px-4 py-2 rounded-full flex items-center gap-2 text-blue-600 font-black text-[9px] uppercase tracking-widest shadow-xl hover:bg-white transition-all active:scale-95">CENTER ON RIDER</button>
+            <button onClick={() => { setIsFollowing(true); setZoomLevel(17.5); }} className="glass-panel px-4 py-2 rounded-full flex items-center gap-2 text-blue-400 font-black text-[9px] uppercase tracking-widest shadow-xl hover:bg-slate-800 transition-all active:scale-95">CENTER ON RIDER</button>
           </div>
         )}
 
         {appStatus === AppStatus.CONFIRM && route && (
           <div className="glass-panel p-4 rounded-2xl mb-3 animate-in slide-in-from-bottom duration-700 shadow-xl border-blue-50">
-            <div className="flex justify-around mb-4 bg-slate-50/50 py-3 rounded-xl">
-              <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Curves</p><p className="text-base font-bold text-blue-500">{route.stats.curvatureIndex}/10</p></div>
-              <div className="text-center border-x border-slate-100 px-6"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Time</p><p className="text-base font-bold text-slate-700">{Math.round(route.duration / 60)}m</p></div>
-              <div className="text-center"><p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Scenic</p><p className="text-base font-bold text-emerald-500">{route.stats.scenicIndex}/10</p></div>
+            <div className="flex justify-around mb-4 bg-slate-800/50 py-3 rounded-xl">
+              <div className="text-center"><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Curves</p><p className="text-base font-bold text-blue-400">{route.stats.curvatureIndex}/10</p></div>
+              <div className="text-center border-x border-slate-700 px-6"><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Time</p><p className="text-base font-bold text-slate-200">{Math.round(route.duration / 60)}m</p></div>
+              <div className="text-center"><p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">Scenic</p><p className="text-base font-bold text-emerald-400">{route.stats.scenicIndex}/10</p></div>
             </div>
             <div className="flex flex-col gap-2">
               <button onClick={() => { setAppStatus(AppStatus.NAVIGATING); setIsFollowing(true); setZoomLevel(17.5); }} className="w-full py-3 bg-blue-500 rounded-xl font-black text-white shadow-md uppercase tracking-widest text-[10px] active:scale-95 transition-all">Start Real Ride</button>
-              <button onClick={startSimulation} className="w-full py-3 bg-slate-800 rounded-xl font-black text-white shadow-md uppercase tracking-widest text-[10px] active:scale-95 transition-all">Realistic Simulation</button>
-              <button onClick={() => { setRoute(null); setAppStatus(AppStatus.IDLE); }} className="w-full py-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest">Adjust</button>
+              <button onClick={startSimulation} className="w-full py-3 bg-slate-700 rounded-xl font-black text-white shadow-md uppercase tracking-widest text-[10px] active:scale-95 transition-all">Realistic Simulation</button>
+              <button onClick={() => { setRoute(null); setAppStatus(AppStatus.IDLE); }} className="w-full py-1.5 text-[9px] font-black text-slate-500 uppercase tracking-widest">Adjust</button>
             </div>
           </div>
         )}
@@ -1106,7 +1106,7 @@ const App: React.FC = () => {
                 <span className="text-white text-base">🏍️</span>
               </button>
             ) : (
-              <button onClick={() => { setAppStatus(AppStatus.NAVIGATING); setIsFollowing(true); setZoomLevel(17.5); }} className="w-full py-3 bg-slate-800 text-white rounded-2xl font-black shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
+              <button onClick={() => { setAppStatus(AppStatus.NAVIGATING); setIsFollowing(true); setZoomLevel(17.5); }} className="w-full py-3 bg-slate-700 text-white rounded-2xl font-black shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                 <span className="uppercase tracking-widest text-xs">Start Free Ride</span>
                 <svg className="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" /></svg>
               </button>
@@ -1118,7 +1118,7 @@ const App: React.FC = () => {
           <div className="glass-panel p-5 rounded-3xl flex items-center justify-between mb-3 shadow-xl">
             <div className="flex gap-6">
               <div className="text-center">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">{route ? "ETA" : "Status"}</p>
+                <p className="text-[8px] font-black text-slate-500 uppercase tracking-widest mb-0.5">{route ? "ETA" : "Status"}</p>
                 <p className="text-lg font-bold tabular-nums text-slate-800">{route ? arrivalTime : "LIVE"}</p>
               </div>
               <div className="text-center">
