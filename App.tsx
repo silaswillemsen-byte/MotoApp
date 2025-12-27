@@ -51,6 +51,13 @@ const App: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const waypointMarkersRef = useRef<any[]>([]);
 
+  // Performance: Refs for throttling state updates to prevent excessive re-renders
+  const lastStateUpdateTimeRef = useRef<number>(0);
+  const pendingPosRef = useRef<LatLng | null>(null);
+  const pendingHeadingRef = useRef<number | null>(null);
+  const pendingSpeedRef = useRef<number | null>(null);
+  const currentSegmentIndexRef = useRef<number>(-1);
+
   const [stops, setStops] = useState<StopInput[]>([
     { address: 'My Location', coord: null, id: 'start' },
     { address: '', coord: null, id: 'end' }
@@ -155,6 +162,11 @@ const App: React.FC = () => {
 
   const updateRouteVisuals = useCallback((targetPos: LatLng, polyline: LatLng[], segIdx: number) => {
     if (!mapRef.current) return;
+    
+    // Performance: Only update if segment actually changed
+    if (currentSegmentIndexRef.current === segIdx) return;
+    currentSegmentIndexRef.current = segIdx;
+    
     const behindPoints = [...polyline.slice(0, segIdx + 1), targetPos];
     const aheadPoints = [targetPos, ...polyline.slice(segIdx + 1)];
 
@@ -248,7 +260,7 @@ const App: React.FC = () => {
       
       waypointMarkersRef.current.push(marker);
     });
-  }, [stops, route, selectedMode, optimizeOrder, currentPos]);
+  }, [stops, route, selectedMode, optimizeOrder]);
 
   const updateRiderLocation = useCallback((newPos: LatLng, rawHeading: number | null, newSpeed: number) => {
     let finalPos = newPos;
@@ -267,17 +279,29 @@ const App: React.FC = () => {
       }
     }
 
-    setCurrentPos(finalPos);
-    setSpeed(newSpeed);
+    // Performance: Throttle state updates to max 10Hz (every 100ms)
+    pendingPosRef.current = finalPos;
+    pendingSpeedRef.current = newSpeed;
+    if (finalHeading !== null) {
+      pendingHeadingRef.current = finalHeading;
+    }
     lastPosRef.current = finalPos;
 
-    if (finalHeading !== null) {
-      setHeading(prev => {
-        let diff = finalHeading! - prev;
-        if (diff > 180) diff -= 360;
-        if (diff < -180) diff += 360;
-        return (prev + diff * 0.15 + 360) % 360;
-      });
+    const now = Date.now();
+    if (now - lastStateUpdateTimeRef.current >= 100) {
+      lastStateUpdateTimeRef.current = now;
+      setCurrentPos(pendingPosRef.current);
+      setSpeed(pendingSpeedRef.current || 0);
+      
+      if (pendingHeadingRef.current !== null) {
+        setHeading(prev => {
+          const finalH = pendingHeadingRef.current!;
+          let diff = finalH - prev;
+          if (diff > 180) diff -= 360;
+          if (diff < -180) diff += 360;
+          return (prev + diff * 0.15 + 360) % 360;
+        });
+      }
     }
 
     if (mapRef.current && mapLoaded) {
@@ -294,7 +318,9 @@ const App: React.FC = () => {
       } else {
         markerRef.current.setLatLng([finalPos.lat, finalPos.lng]);
         const el = document.getElementById('rider-arrow');
-        if (el) el.style.transform = `rotate(${finalHeading !== null ? finalHeading : (heading || 0)}deg)`;
+        // Use immediate heading value for smooth visual updates
+        const displayHeading = finalHeading !== null ? finalHeading : (pendingHeadingRef.current !== null ? pendingHeadingRef.current : heading);
+        if (el) el.style.transform = `rotate(${displayHeading}deg)`;
       }
 
       if (isFollowingRef.current) {
@@ -418,7 +444,8 @@ const App: React.FC = () => {
     if (appStatus === AppStatus.NAVIGATING && isFollowing) {
       return {
         transform: `perspective(1200px) rotateX(65deg) rotateZ(${-heading}deg) scale(1.7)`,
-        transformOrigin: `50% 50%`
+        transformOrigin: `50% 50%`,
+        willChange: 'transform'  // Performance: GPU acceleration hint
       };
     }
     return {
@@ -463,7 +490,7 @@ const App: React.FC = () => {
         setGpsActive(false);
         setGpsPermissionDenied(true);
       }
-    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 });
+    }, { enableHighAccuracy: true, maximumAge: 1000, timeout: 5000 });  // Performance: Allow 1s GPS cache
     return () => navigator.geolocation.clearWatch(watchId);
   }, [mapLoaded, isSimulating, updateRiderLocation]);
 
@@ -536,14 +563,19 @@ const App: React.FC = () => {
     let frameCount = 0;
 
     const animate = () => {
+      frameCount++;
+      // Performance: Run at 30 FPS instead of 60 FPS
+      if (frameCount % 2 !== 0) {
+        simIntervalRef.current = requestAnimationFrame(animate);
+        return;
+      }
+      
       distanceRef.current += SPEED_FACTOR;
       if (distanceRef.current >= totalDist) {
         stopSimulation();
         setAppStatus(AppStatus.ARRIVED);
         return;
       }
-
-      frameCount++;
 
       // Update current maneuver only every 10 frames to reduce re-renders
       if (frameCount % 10 === 0) {
