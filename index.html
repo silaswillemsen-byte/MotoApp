@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MotoNav Pro - Production Grade</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/MotoApp/manifest.json">
+    <meta name="theme-color" content="#3b82f6">
+    
+    <!-- iOS PWA Support -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MotoNav">
+    <link rel="apple-touch-icon" href="/MotoApp/icon-180.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Leaflet JS - Robust for Sandboxed Environments -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <style>
+        body, html, #root { 
+            height: 100%; 
+            width: 100%;
+            margin: 0; 
+            padding: 0; 
+            overflow: hidden; 
+            background: #0f172a; 
+            color: #f1f5f9; 
+        }
+        
+        .map-tiles {
+            filter: brightness(1.05) contrast(0.9);
+        }
+        
+        #root {
+            position: relative;
+            z-index: 1;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Waypoint Action Popup Styling */
+        .waypoint-action-popup .leaflet-popup-content-wrapper {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            padding: 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(239, 68, 68, 0.2);
+        }
+        .waypoint-action-popup .leaflet-popup-content {
+            margin: 0;
+            min-width: 160px;
+        }
+        .waypoint-action-popup .leaflet-popup-tip {
+            background: rgba(255, 255, 255, 0.98);
+            border: 2px solid rgba(239, 68, 68, 0.2);
+            border-top: none;
+            border-right: none;
+        }
+        .waypoint-action-popup .leaflet-popup-close-button {
+            color: #64748b;
+            font-size: 20px;
+            padding: 4px 8px;
+        }
+        .waypoint-action-popup .leaflet-popup-close-button:hover {
+            color: #ef4444;
+        }
+
+        /* Perspective Map Container - Increased size to avoid horizon clipping */
+        .map-wrapper {
+            position: absolute;
+            width: 500%; 
+            height: 500%;
+            top: -200%;
+            left: -200%;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 0;
+            background: #0f172a;
+            will-change: transform;
+            transform-style: preserve-3d;
+        }
+
+        /* Marker Styling - Perfectly Centered */
+        .rider-marker-icon {
+            background: none !important;
+            border: none !important;
+            pointer-events: none;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        .rider-arrow-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+        }
+        .rider-pulse {
+            position: absolute;
+            width: 40px; 
+            height: 40px; 
+            background: rgba(59, 130, 246, 0.4);
+            border-radius: 50%;
+            animation: ripple 2s infinite ease-out;
+            pointer-events: none;
+            top: 50%;
+            left: 50%;
+            margin-top: -20px;
+            margin-left: -20px;
+        }
+        .rider-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 10px solid transparent; 
+            border-right: 10px solid transparent; 
+            border-bottom: 28px solid #3b82f6; 
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.8));
+            /* The visual center of the arrow is roughly at the bottom. 
+               We use 80% to keep the 'point' of the arrow closer to the center of rotation */
+            transform-origin: 50% 80%;
+            z-index: 2;
+            transition: transform 0.1s linear;
+            top: 50%;
+            left: 50%;
+            margin-top: -22px; /* Adjusted to center the arrow visually */
+            margin-left: -10px;
+        }
+
+        @keyframes ripple {
+            0% { transform: scale(0.4); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        .leaflet-container { 
+            background: #0f172a !important; 
+        }
+        
+        .leaflet-tile {
+            filter: brightness(0.8) contrast(1.1) saturate(1.1);
+        }
+
+        .leaflet-control-attribution { display: none !important; }
+
+        @keyframes pulse-soft {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.6; }
+        }
+        .animate-pulse-soft { animation: pulse-soft 2.5s ease-in-out infinite; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        @keyframes heart-beat {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.8; }
+        }
+        .signal-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: heart-beat 1s infinite;
+        }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.0.0",
+    "react-dom": "https://esm.sh/react-dom@19.0.0",
+    "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
+    "@google/genai": "https://esm.sh/@google/genai@1.34.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>

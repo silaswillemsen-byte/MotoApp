@@ -1,0 +1,27 @@
+{
+  "name": "MotoNav - Motorcycle Navigation",
+  "short_name": "MotoNav",
+  "description": "Premium motorcycle navigation with 3D perspective, curvy routes, and turn-by-turn guidance",
+  "start_url": "/MotoApp/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "any",
+  "scope": "/MotoApp/",
+  "categories": ["navigation", "travel", "sports"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,7 @@
+{
+  "name": "MotoNav Pro MVP",
+  "description": "A high-performance motorcycle navigation system featuring curvy routing, scenic scoring, and GPX management, designed for the ultimate riding experience.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
