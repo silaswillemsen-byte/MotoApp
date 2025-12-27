@@ -57,6 +57,9 @@ const App: React.FC = () => {
   const pendingHeadingRef = useRef<number | null>(null);
   const pendingSpeedRef = useRef<number | null>(null);
   const currentSegmentIndexRef = useRef<number>(-1);
+  const lastRouteVisualPosRef = useRef<LatLng | null>(null);
+  const polylineDistancesRef = useRef<number[] | null>(null);
+  const currentManeuverIndexRef = useRef<number>(0);
 
   const [stops, setStops] = useState<StopInput[]>([
     { address: 'My Location', coord: null, id: 'start' },
@@ -74,6 +77,10 @@ const App: React.FC = () => {
   const [userCountry, setUserCountry] = useState<string | null>(null);
   const [isUIVisible, setIsUIVisible] = useState(true);
   const [gpxLoading, setGpxLoading] = useState(false);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const simIntervalRef = useRef<number | null>(null);
+  const distanceRef = useRef(0);
+  const [currentManeuverIndex, setCurrentManeuverIndex] = useState(0);
 
   const [isPortrait, setIsPortrait] = useState(window.innerHeight > window.innerWidth);
   useEffect(() => {
@@ -104,11 +111,18 @@ const App: React.FC = () => {
   useEffect(() => { zoomLevelRef.current = zoomLevel; }, [zoomLevel]);
   useEffect(() => { appStatusRef.current = appStatus; }, [appStatus]);
   useEffect(() => { routeRef.current = route; }, [route]);
-
-  const [isSimulating, setIsSimulating] = useState(false);
-  const simIntervalRef = useRef<number | null>(null);
-  const distanceRef = useRef(0);
-  const [currentManeuverIndex, setCurrentManeuverIndex] = useState(0);
+  useEffect(() => { currentManeuverIndexRef.current = currentManeuverIndex; }, [currentManeuverIndex]);
+  useEffect(() => {
+    if (route?.polyline?.length) {
+      const distances: number[] = [0];
+      for (let i = 1; i < route.polyline.length; i++) {
+        distances.push(distances[i - 1] + getDistance(route.polyline[i - 1], route.polyline[i]));
+      }
+      polylineDistancesRef.current = distances;
+    } else {
+      polylineDistancesRef.current = null;
+    }
+  }, [route]);
 
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [activeSearchIndex, setActiveSearchIndex] = useState<number | null>(null);
@@ -163,9 +177,14 @@ const App: React.FC = () => {
   const updateRouteVisuals = useCallback((targetPos: LatLng, polyline: LatLng[], segIdx: number) => {
     if (!mapRef.current) return;
     
-    // Performance: Only update if segment actually changed
-    if (currentSegmentIndexRef.current === segIdx) return;
+    // Performance: Only update if segment changed or rider moved a meaningful amount
+    if (currentSegmentIndexRef.current === segIdx) {
+      if (lastRouteVisualPosRef.current && getDistance(lastRouteVisualPosRef.current, targetPos) < 0.00003) {
+        return;
+      }
+    }
     currentSegmentIndexRef.current = segIdx;
+    lastRouteVisualPosRef.current = targetPos;
     
     const behindPoints = [...polyline.slice(0, segIdx + 1), targetPos];
     const aheadPoints = [targetPos, ...polyline.slice(segIdx + 1)];
@@ -265,12 +284,14 @@ const App: React.FC = () => {
   const updateRiderLocation = useCallback((newPos: LatLng, rawHeading: number | null, newSpeed: number) => {
     let finalPos = newPos;
     let finalHeading = rawHeading;
+    let currentSegmentIndex = -1;
 
     // SNAP-TO-ROUTE LOGIC
     if (appStatusRef.current === AppStatus.NAVIGATING && routeRef.current) {
       const { point, bearing, segmentIndex } = getNearestPointOnLine(newPos, routeRef.current.polyline);
       finalPos = point;
       finalHeading = bearing;
+      currentSegmentIndex = segmentIndex;
       updateRouteVisuals(finalPos, routeRef.current.polyline, segmentIndex);
     } else if (finalHeading === null && lastPosRef.current) {
       const dist = getDistance(lastPosRef.current, newPos);
@@ -348,6 +369,41 @@ const App: React.FC = () => {
           }
         }
         mapRef.current.setView(viewCenter, zoomLevelRef.current, { animate: false });
+      }
+    }
+
+    if (
+      appStatusRef.current === AppStatus.NAVIGATING &&
+      routeRef.current &&
+      currentSegmentIndex >= 0
+    ) {
+      const distances = polylineDistancesRef.current;
+      if (distances && distances.length > currentSegmentIndex) {
+        const routePolyline = routeRef.current.polyline;
+        const segStart = routePolyline[currentSegmentIndex];
+        const totalPolylineDist = distances[distances.length - 1] || 0;
+        if (totalPolylineDist > 0) {
+          const progressDist = distances[currentSegmentIndex] + getDistance(segStart, finalPos);
+          const traveledMeters = (progressDist / totalPolylineDist) * routeRef.current.distance;
+          const maneuverDistances: number[] = [];
+          let cumulativeDist = 0;
+          routeRef.current.maneuvers.forEach(m => {
+            maneuverDistances.push(cumulativeDist);
+            cumulativeDist += m.distance;
+          });
+          let newManeuverIndex = 0;
+          for (let i = 0; i < maneuverDistances.length; i++) {
+            if (traveledMeters >= maneuverDistances[i]) {
+              newManeuverIndex = i;
+            } else {
+              break;
+            }
+          }
+          if (newManeuverIndex !== currentManeuverIndexRef.current) {
+            currentManeuverIndexRef.current = newManeuverIndex;
+            setCurrentManeuverIndex(newManeuverIndex);
+          }
+        }
       }
     }
   }, [mapLoaded, heading, updateRouteVisuals]);
