@@ -16,9 +16,6 @@
     <link rel="apple-touch-icon" href="/MotoApp/icon-180.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Leaflet JS - Robust for Sandboxed Environments -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <style>
         body, html, #root { 
             height: 100%; 
@@ -28,10 +25,6 @@
             overflow: hidden; 
             background: #0f172a; 
             color: #f1f5f9; 
-        }
-        
-        .map-tiles {
-            filter: brightness(1.05) contrast(0.9);
         }
         
         #root {
@@ -49,45 +42,38 @@
         }
 
         /* Waypoint Action Popup Styling */
-        .waypoint-action-popup .leaflet-popup-content-wrapper {
+        .waypoint-action-popup .maplibregl-popup-content {
             background: rgba(15, 23, 42, 0.95);
             backdrop-filter: blur(12px);
             border-radius: 12px;
-            padding: 0;
+            padding: 0 0 2px 0;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             border: 2px solid rgba(239, 68, 68, 0.3);
-        }
-        .waypoint-action-popup .leaflet-popup-content {
-            margin: 0;
             min-width: 160px;
         }
-        .waypoint-action-popup .leaflet-popup-tip {
+        .waypoint-action-popup .maplibregl-popup-tip {
             background: rgba(255, 255, 255, 0.98);
             border: 2px solid rgba(239, 68, 68, 0.2);
             border-top: none;
             border-right: none;
         }
-        .waypoint-action-popup .leaflet-popup-close-button {
+        .waypoint-action-popup .maplibregl-popup-close-button {
             color: #94a3b8;
             font-size: 20px;
             padding: 4px 8px;
         }
-        .waypoint-action-popup .leaflet-popup-close-button:hover {
+        .waypoint-action-popup .maplibregl-popup-close-button:hover {
             color: #ef4444;
         }
 
         /* Perspective Map Container - Increased size to avoid horizon clipping */
         .map-wrapper {
             position: absolute;
-            width: 250%; 
-            height: 250%;
-            top: -75%;
-            left: -75%;
-            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            inset: 0;
+            width: 100%;
+            height: 100%;
             z-index: 0;
             background: #0f172a;
-            will-change: transform;
-            transform-style: preserve-3d;
         }
 
         /* Marker Styling - Perfectly Centered */
@@ -145,15 +131,10 @@
             100% { transform: scale(1.6); opacity: 0; }
         }
 
-        .leaflet-container { 
+        .maplibregl-map { 
             background: #0f172a !important; 
         }
-        
-        .leaflet-tile {
-            filter: brightness(0.7) contrast(1.2) saturate(0.9);
-        }
-
-        .leaflet-control-attribution { display: none !important; }
+        .maplibregl-ctrl-attrib { display: none !important; }
 
         @keyframes pulse-soft {
           0%, 100% { opacity: 1; }

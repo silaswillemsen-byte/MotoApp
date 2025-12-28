@@ -57,6 +57,84 @@ const generateCurvyTarget = (start: LatLng, end: LatLng, mode: RoutingMode): Lat
   };
 };
 
+const buildRoadName = (step: any): string => {
+  const name = step?.name && step.name !== 'unnamed road' ? step.name : '';
+  const ref = step?.ref || '';
+  if (name && ref && !name.includes(ref)) return `${name} (${ref})`;
+  return name || ref || '';
+};
+
+const buildInstruction = (step: any): string => {
+  const maneuver = step?.maneuver || {};
+  if (maneuver.instruction) return maneuver.instruction;
+
+  const roadName = buildRoadName(step);
+  const hasRoad = roadName.length > 0;
+  const onRoad = hasRoad ? ` on ${roadName}` : '';
+  const ontoRoad = hasRoad ? ` onto ${roadName}` : '';
+  const modifier = maneuver.modifier;
+
+  switch (maneuver.type) {
+    case 'depart':
+      if (modifier) return `Head ${modifier}${onRoad}`;
+      return hasRoad ? `Head on ${roadName}` : 'Head out';
+    case 'turn':
+      if (modifier === 'straight') return `Continue straight${onRoad}`;
+      if (modifier) return `Turn ${modifier}${ontoRoad}`;
+      return hasRoad ? `Turn${ontoRoad}` : 'Turn';
+    case 'continue':
+    case 'new name':
+      return hasRoad ? `Continue on ${roadName}` : 'Continue';
+    case 'merge':
+      if (modifier) return `Merge ${modifier}${ontoRoad}`;
+      return hasRoad ? `Merge onto ${roadName}` : 'Merge';
+    case 'on ramp':
+      return hasRoad ? `Take the ramp to ${roadName}` : 'Take the ramp';
+    case 'off ramp':
+      return hasRoad ? `Take the exit toward ${roadName}` : 'Take the exit';
+    case 'fork':
+      if (modifier) return `Keep ${modifier}${onRoad}`;
+      return hasRoad ? `Keep toward ${roadName}` : 'Keep right';
+    case 'roundabout':
+    case 'rotary':
+      if (maneuver.exit) return `At the roundabout, take exit ${maneuver.exit}${ontoRoad}`;
+      return hasRoad ? `Enter the roundabout toward ${roadName}` : 'Enter the roundabout';
+    case 'arrive':
+      return 'Arrive at destination';
+    default:
+      if (maneuver.type && maneuver.type.includes('uturn')) {
+        return modifier === 'left' ? 'Make a U-turn left' : 'Make a U-turn right';
+      }
+      return hasRoad ? `Continue on ${roadName}` : 'Continue';
+  }
+};
+
+const fetchRoute = async (stops: LatLng[], mode: RoutingMode): Promise<any> => {
+  const sequence: LatLng[] = [];
+  const radiusValues: number[] = [];
+
+  for (let i = 0; i < stops.length - 1; i++) {
+    sequence.push(stops[i]);
+    radiusValues.push(100); // Standard snap
+
+    const target = generateCurvyTarget(stops[i], stops[i + 1], mode);
+    if (target) {
+      sequence.push(target);
+      radiusValues.push(2000); // Wide snap for hint points
+    }
+  }
+
+  sequence.push(stops[stops.length - 1]);
+  radiusValues.push(100);
+
+  const allCoords = sequence.map(p => `${p.lng},${p.lat}`).join(';');
+  const radiusesStr = radiusValues.join(';');
+  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${allCoords}?overview=full&geometries=polyline&steps=true&radiuses=${radiusesStr}&continue_straight=true`;
+
+  const response = await fetch(osrmUrl);
+  return await response.json();
+};
+
 export const calculateRoute = async (
   stops: LatLng[],
   mode: RoutingMode,
@@ -92,51 +170,49 @@ export const calculateRoute = async (
     }
   }
 
-  // 2. Build Sequence with Radiuses
-  const sequence: LatLng[] = [];
-  const radiusValues: number[] = [];
+  // 2. Fetch Route (with Retry Logic)
+  let osrmData;
+  let usedMode = mode;
 
-  for (let i = 0; i < finalStops.length - 1; i++) {
-    sequence.push(finalStops[i]);
-    radiusValues.push(100); // Standard snap
-
-    const target = generateCurvyTarget(finalStops[i], finalStops[i + 1], mode);
-    if (target) {
-      sequence.push(target);
-      radiusValues.push(2000); // Wide snap for hint points
+  try {
+    osrmData = await fetchRoute(finalStops, mode);
+    if (osrmData.code !== 'Ok') throw new Error(osrmData.code);
+  } catch (error) {
+    // If Curvy mode fails, retry with Balanced (no intermediate points)
+    if (mode === RoutingMode.CURVY) {
+      console.warn('Curvy routing failed, falling back to Balanced mode.');
+      usedMode = RoutingMode.BALANCED;
+      osrmData = await fetchRoute(finalStops, RoutingMode.BALANCED);
+    } else {
+      throw error;
     }
   }
 
-  sequence.push(finalStops[finalStops.length - 1]);
-  radiusValues.push(100);
-
-  // 3. OSRM API Request
-  const allCoords = sequence.map(p => `${p.lng},${p.lat}`).join(';');
-  const radiusesStr = radiusValues.join(';');
-  const osrmUrl = `https://router.project-osrm.org/route/v1/driving/${allCoords}?overview=full&geometries=polyline&steps=true&radiuses=${radiusesStr}&continue_straight=true`;
-
-  const osrmResponse = await fetch(osrmUrl);
-  const osrmData = await osrmResponse.json();
-
-  if (osrmData.code !== 'Ok') {
-    console.error("OSRM Error:", osrmData);
-    throw new Error(`Route calculation failed: ${osrmData.message || osrmData.code}`);
+  if (!osrmData || osrmData.code !== 'Ok') {
+    throw new Error(`Route calculation failed: ${osrmData?.message || osrmData?.code || 'Unknown Error'}`);
   }
 
   const bestRoute = osrmData.routes[0];
   const fullPath = decodePolyline(bestRoute.geometry);
 
+  if (fullPath.length === 0) {
+    throw new Error("Route calculation returned empty path.");
+  }
+
   // 4. AI Analysis & Scoring
   const apiKey = process.env.API_KEY;
   let aiStats = {
-    curvatureIndex: mode === RoutingMode.CURVY ? 8 : 4,
+    curvatureIndex: usedMode === RoutingMode.CURVY ? 8 : 4,
     scenicIndex: 6,
     warnings: ["Live analysis unavailable. Enjoy the ride!"]
   };
 
+  // Update AI prompt to reflect actual used mode needed? 
+  // Probably keep original intent or update. Let's update stats base.
+
   if (apiKey) {
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = `Analyze this multi-stop motorcycle journey. Mode: ${mode.toUpperCase()}. Total distance: ${Math.round(bestRoute.distance / 1000)}km. Provide curvatureIndex (1-10), scenicIndex (1-10), and 3 motorcycle safety tips for this terrain.`;
+    const prompt = `Analyze this multi-stop motorcycle journey. Mode: ${usedMode.toUpperCase()}. Total distance: ${Math.round(bestRoute.distance / 1000)}km. Provide curvatureIndex (1-10), scenicIndex (1-10), and 3 motorcycle safety tips for this terrain.`;
 
     try {
       const aiResponse = await ai.models.generateContent({
@@ -160,11 +236,10 @@ export const calculateRoute = async (
       console.warn("AI Analysis failed, using fallbacks", e);
     }
   } else {
-    console.log("No API Key found, using mock AI data");
     // Generate deterministic "randomness" based on distance
     const seed = Math.floor(bestRoute.distance);
     aiStats = {
-      curvatureIndex: mode === RoutingMode.CURVY ? 7 + (seed % 3) : 3 + (seed % 3),
+      curvatureIndex: usedMode === RoutingMode.CURVY ? 7 + (seed % 3) : 3 + (seed % 3),
       scenicIndex: 5 + (seed % 5),
       warnings: [
         "Ride safe and enjoy the open road!",
@@ -179,16 +254,13 @@ export const calculateRoute = async (
     leg.steps.forEach((step: any) => {
       const maneuverType = step.maneuver.type;
       const modifier = step.maneuver.modifier;
-      
-      console.log('OSRM Step:', { 
-        type: maneuverType, 
-        modifier, 
-        instruction: step.maneuver.instruction,
-        name: step.name 
-      });
-      
+      const roadName = buildRoadName(step);
+      const maneuverLocation = Array.isArray(step.maneuver?.location)
+        ? { lng: step.maneuver.location[0], lat: step.maneuver.location[1] }
+        : undefined;
+
       let iconType: 'turn-left' | 'turn-right' | 'straight' | 'u-turn' | 'arrive' | 'sharp-left' | 'sharp-right' | 'slight-left' | 'slight-right' | 'merge-left' | 'merge-right' | 'exit-left' | 'exit-right' | 'fork-left' | 'fork-right' | 'roundabout-left' | 'roundabout-right' | 'u-turn-left' | 'u-turn-right' = 'straight';
-      
+
       // Map OSRM maneuver types to our icon types
       if (maneuverType === 'turn') {
         if (modifier === 'sharp left') iconType = 'sharp-left';
@@ -216,11 +288,13 @@ export const calculateRoute = async (
       } else if (maneuverType.includes('uturn')) {
         iconType = modifier === 'left' ? 'u-turn-left' : 'u-turn-right';
       }
-      
+
       maneuvers.push({
-        instruction: step.maneuver.instruction || 'Continue',
+        instruction: buildInstruction(step),
         distance: step.distance,
-        type: iconType
+        type: iconType,
+        location: maneuverLocation,
+        roadName
       });
     });
   });
@@ -228,8 +302,6 @@ export const calculateRoute = async (
   if (maneuvers.length > 0 && maneuvers[maneuvers.length - 1].type !== 'arrive') {
     maneuvers.push({ instruction: "Destination reached", distance: 0, type: 'arrive' });
   }
-  
-  console.log('Final maneuvers:', maneuvers.map(m => ({ instruction: m.instruction, type: m.type })));
 
   return {
     polyline: fullPath,
@@ -243,5 +315,4 @@ export const calculateRoute = async (
     warnings: aiStats.warnings || [],
     optimizedOrder
   };
-
 };

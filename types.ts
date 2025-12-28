@@ -30,6 +30,8 @@ export interface Maneuver {
   instruction: string;
   distance: number;
   type: 'turn-left' | 'turn-right' | 'straight' | 'u-turn' | 'arrive' | 'sharp-left' | 'sharp-right' | 'slight-left' | 'slight-right' | 'merge-left' | 'merge-right' | 'exit-left' | 'exit-right' | 'fork-left' | 'fork-right' | 'roundabout-left' | 'roundabout-right' | 'u-turn-left' | 'u-turn-right';
+  location?: LatLng;
+  roadName?: string;
 }
 
 export interface RouteResponse {

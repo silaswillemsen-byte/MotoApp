@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@google/genai": "^1.34.0",
+    "@protomaps/basemaps": "^5.7.0",
+    "maplibre-gl": "^5.15.0",
+    "pmtiles": "^4.3.2",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },
